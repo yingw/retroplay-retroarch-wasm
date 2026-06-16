@@ -94,6 +94,7 @@ jobs:
                  deps/rcheevos/src/rcheevos/value.o \
                  deps/rcheevos/src/rhash/aes.o \
                  deps/rcheevos/src/rhash/cdreader.o \
+                 deps/rcheevos/src/rhash/md5.o \
                  deps/rcheevos/src/rhash/hash.o \
                  deps/rcheevos/src/rhash/hash_disc.o \
                  deps/rcheevos/src/rhash/hash_encrypted.o \
