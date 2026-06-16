@@ -96,7 +96,8 @@ jobs:
                  cheevos/cheevos_client.o \
                  cheevos/cheevos_menu.o
           # 从 OBJ 中排除 md5.o（fceumm 的 md5 实现与 rcheevos 的 md5_finish 冲突）
-          OBJ := $(filter-out %/md5.o,$(OBJ))
+          # fceumm 的 md5 路径是 src/md5.o
+          OBJ := $(filter-out src/md5.o,$(OBJ))
           endif
           PATCH
 
