@@ -64,28 +64,27 @@ jobs:
           mkdir -p deps
           git clone --depth=1 https://github.com/RetroAchievements/rcheevos.git deps/rcheevos
 
-          # 3. 在文件末尾追加 cheevos 编译逻辑
+          # 3. 在文件末尾追加 cheevos 编译逻辑（用 OBJ 而不是 SOURCES）
           cat >> Makefile.emscripten << 'PATCH'
 
           # RetroPlay patch: RetroAchievements (cheevos) support
           ifeq ($(HAVE_CHEEVOS), 1)
           DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
           INCLUDE_DIRS += -Ideps/rcheevos/include
-          SOURCES += \
-            cheevos/cheevos.c \
-            cheevos/cheevos_client.c \
-            cheevos/cheevos_menu.c \
-            deps/rcheevos/src/rc_client.c \
-            deps/rcheevos/src/rc_client_raintegration.c \
-            deps/rcheevos/src/rc_client_common.c \
-            deps/rcheevos/src/rc_hash.c \
-            deps/rcheevos/src/rc_runtime.c \
-            deps/rcheevos/src/rc_runtime_common.c \
-            deps/rcheevos/src/rc_url.c \
-            deps/rcheevos/src/rc_util.c \
-            deps/rcheevos/src/rcheevos.c \
-            deps/rcheevos/src/rhash/md5.c \
-            deps/rcheevos/src/rhash/hash.c
+          OBJ += cheevos/cheevos.o \
+                 cheevos/cheevos_client.o \
+                 cheevos/cheevos_menu.o \
+                 deps/rcheevos/src/rc_client.o \
+                 deps/rcheevos/src/rc_client_raintegration.o \
+                 deps/rcheevos/src/rc_client_common.o \
+                 deps/rcheevos/src/rc_hash.o \
+                 deps/rcheevos/src/rc_runtime.o \
+                 deps/rcheevos/src/rc_runtime_common.o \
+                 deps/rcheevos/src/rc_url.o \
+                 deps/rcheevos/src/rc_util.o \
+                 deps/rcheevos/src/rcheevos.o \
+                 deps/rcheevos/src/rhash/md5.o \
+                 deps/rcheevos/src/rhash/hash.o
           endif
           PATCH
 
