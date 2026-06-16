@@ -87,7 +87,7 @@ jobs:
 
           # RetroPlay patch: RetroAchievements (cheevos) support
           # rcheevos 由 librcheevos.a 提供，这里只编译 RetroArch 自己的 cheevos 模块
-          # md5 符号冲突通过 emar d 从 core .a 中移除 md5.o 解决
+          # md5 符号冲突：排除 core 的 md5.o，让 rcheevos 提供 md5 实现
           ifeq ($(HAVE_CHEEVOS), 1)
           DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
           INCLUDE_DIRS += -Ideps/rcheevos/include
@@ -95,6 +95,8 @@ jobs:
           OBJ += cheevos/cheevos.o \
                  cheevos/cheevos_client.o \
                  cheevos/cheevos_menu.o
+          # 从 OBJ 中排除 md5.o（fceumm 的 md5 实现与 rcheevos 的 md5_finish 冲突）
+          OBJ := $(filter-out %/md5.o,$(OBJ))
           endif
           PATCH
 
@@ -150,28 +152,13 @@ jobs:
             # 添加 rcheevos 静态库路径
             export LIBRARY_PATH="$PWD:$LIBRARY_PATH"
 
-            # 先编译所有 .o 文件
+            # 编译 + 链接（Makefile.emscripten 的 patch 已排除 md5.o）
             emmake make -f Makefile.emscripten \
               LIBRETRO="${CORE}" \
               HAVE_CHEEVOS=1 \
               HAVE_NETWORKING=1 \
               HAVE_OPENGLES3=1 \
-              obj-emscripten -j$(nproc) 2>&1 | tail -20
-
-            # 从 obj-emscripten 目录删除 md5.o（避免与 rcheevos 冲突）
-            # emmake 会从 .o 文件重新打包 .a，删掉 md5.o 就不会被包含
-            if [ -f "obj-emscripten/md5.o" ]; then
-              rm -f obj-emscripten/md5.o
-              echo "🔧 已删除 obj-emscripten/md5.o 避免符号冲突"
-            fi
-
-            # 链接（用不含 md5.o 的 .a）
-            emmake make -f Makefile.emscripten \
-              LIBRETRO="${CORE}" \
-              HAVE_CHEEVOS=1 \
-              HAVE_NETWORKING=1 \
-              HAVE_OPENGLES3=1 \
-              "${CORE}_libretro.js" -j1 2>&1 | tail -20
+              -j$(nproc) 2>&1 | tail -50
 
             if [ -f "${CORE}_libretro.js" ] && [ -f "${CORE}_libretro.wasm" ]; then
               mkdir -p "../dist"
