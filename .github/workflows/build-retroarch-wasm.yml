@@ -69,12 +69,9 @@ jobs:
 
           # RetroPlay patch: RetroAchievements (cheevos) support
           # 参考 Makefile.common 中 HAVE_CHEEVOS=1 的源文件列表
-          # md5 符号重命名：避免与 fceumm 等核心自带的 md5 符号冲突
+          # md5 冲突通过 llvm-ar 从 core .bc 中移除 md5.o 解决
           ifeq ($(HAVE_CHEEVOS), 1)
-          DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS \
-                     -Dmd5_init=rc_md5_init \
-                     -Dmd5_append=rc_md5_append \
-                     -Dmd5_finish=rc_md5_finish
+          DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
           INCLUDE_DIRS += -Ideps/rcheevos/include
           OBJ += cheevos/cheevos.o \
                  cheevos/cheevos_client.o \
@@ -154,6 +151,13 @@ jobs:
             fi
 
             echo "✅ core 编译成功: $BC_FILE"
+
+            # 从 .bc 中移除 md5.o，避免与 rcheevos 的 md5 符号冲突
+            # fceumm 的 md5.o 只用于 ROM 校验，删除不影响模拟功能
+            if command -v llvm-ar &> /dev/null; then
+              llvm-ar d "$BC_FILE" md5.o 2>/dev/null && echo "🔧 已移除 md5.o 避免符号冲突" || echo "ℹ️ md5.o 不存在或已移除"
+            fi
+
             cp "$BC_FILE" ../RetroArch/libretro_emscripten.bc
             cd ..
 
