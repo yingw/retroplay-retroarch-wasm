@@ -66,8 +66,8 @@ jobs:
           RCHEEVOS_INCLUDE="-Ideps/rcheevos/include -Ideps/rcheevos/src"
           RCHEEVOS_DEFINES="-DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS"
 
-          echo "=== 编译 rcheevos 源文件 ==="
-          find "$RCHEEVOS_DIR" -name "*.c" | while read f; do
+          echo "=== 编译 rcheevos 源文件（跳过 md5.c，使用 core 的 md5 实现）==="
+          find "$RCHEEVOS_DIR" -name "*.c" ! -name "md5.c" | while read f; do
             OUT="${f%.c}.o"
             emcc $RCHEEVOS_DEFINES $RCHEEVOS_INCLUDE -O2 -c "$f" -o "$OUT" 2>&1 | tail -1
             echo "compiled: $OUT"
@@ -87,12 +87,11 @@ jobs:
 
           # RetroPlay patch: RetroAchievements (cheevos) support
           # rcheevos 由 librcheevos.a 提供，这里只编译 RetroArch 自己的 cheevos 模块
-          # md5 符号冲突：fceumm 和 rcheevos 都提供 md5 实现，用 --allow-multiple-definition 解决
+          # md5 符号冲突通过 emar d 从 core .a 中移除 md5.o 解决
           ifeq ($(HAVE_CHEEVOS), 1)
           DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
           INCLUDE_DIRS += -Ideps/rcheevos/include
           LIBS += -lrcheevos
-          LDFLAGS += -Wl,--allow-multiple-definition
           OBJ += cheevos/cheevos.o \
                  cheevos/cheevos_client.o \
                  cheevos/cheevos_menu.o
