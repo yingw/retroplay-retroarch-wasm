@@ -68,6 +68,7 @@ jobs:
           cat >> Makefile.emscripten << 'PATCH'
 
           # RetroPlay patch: RetroAchievements (cheevos) support
+          # 参考 Makefile.common 中 HAVE_CHEEVOS=1 的源文件列表
           ifeq ($(HAVE_CHEEVOS), 1)
           DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
           INCLUDE_DIRS += -Ideps/rcheevos/include
@@ -75,16 +76,33 @@ jobs:
                  cheevos/cheevos_client.o \
                  cheevos/cheevos_menu.o \
                  deps/rcheevos/src/rc_client.o \
-                 deps/rcheevos/src/rc_client_raintegration.o \
-                 deps/rcheevos/src/rc_client_common.o \
-                 deps/rcheevos/src/rc_hash.o \
-                 deps/rcheevos/src/rc_runtime.o \
-                 deps/rcheevos/src/rc_runtime_common.o \
-                 deps/rcheevos/src/rc_url.o \
+                 deps/rcheevos/src/rc_compat.o \
+                 deps/rcheevos/src/rc_libretro.o \
                  deps/rcheevos/src/rc_util.o \
-                 deps/rcheevos/src/rcheevos.o \
-                 deps/rcheevos/src/rhash/md5.o \
-                 deps/rcheevos/src/rhash/hash.o
+                 deps/rcheevos/src/rcheevos/alloc.o \
+                 deps/rcheevos/src/rcheevos/condition.o \
+                 deps/rcheevos/src/rcheevos/condset.o \
+                 deps/rcheevos/src/rcheevos/consoleinfo.o \
+                 deps/rcheevos/src/rcheevos/format.o \
+                 deps/rcheevos/src/rcheevos/lboard.o \
+                 deps/rcheevos/src/rcheevos/memref.o \
+                 deps/rcheevos/src/rcheevos/operand.o \
+                 deps/rcheevos/src/rcheevos/richpresence.o \
+                 deps/rcheevos/src/rcheevos/runtime.o \
+                 deps/rcheevos/src/rcheevos/runtime_progress.o \
+                 deps/rcheevos/src/rcheevos/trigger.o \
+                 deps/rcheevos/src/rcheevos/value.o \
+                 deps/rcheevos/src/rhash/aes.o \
+                 deps/rcheevos/src/rhash/cdreader.o \
+                 deps/rcheevos/src/rhash/hash.o \
+                 deps/rcheevos/src/rhash/hash_disc.o \
+                 deps/rcheevos/src/rhash/hash_encrypted.o \
+                 deps/rcheevos/src/rhash/hash_rom.o \
+                 deps/rcheevos/src/rhash/hash_zip.o \
+                 deps/rcheevos/src/rapi/rc_api_common.o \
+                 deps/rcheevos/src/rapi/rc_api_info.o \
+                 deps/rcheevos/src/rapi/rc_api_runtime.o \
+                 deps/rcheevos/src/rapi/rc_api_user.o
           endif
           PATCH
 
