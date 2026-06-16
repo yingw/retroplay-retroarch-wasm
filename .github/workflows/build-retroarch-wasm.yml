@@ -136,6 +136,7 @@ jobs:
             emmake make -f Makefile.emscripten \
               LIBRETRO="${CORE}" \
               HAVE_OPENGLES3=1 \
+              HAVE_NETWORKING=0 \
               -j$(nproc) 2>&1 | tail -50
 
             if [ -f "${CORE}_libretro.js" ] && [ -f "${CORE}_libretro.wasm" ]; then
