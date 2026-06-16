@@ -87,10 +87,12 @@ jobs:
 
           # RetroPlay patch: RetroAchievements (cheevos) support
           # rcheevos 由 librcheevos.a 提供，这里只编译 RetroArch 自己的 cheevos 模块
+          # md5 符号冲突：fceumm 和 rcheevos 都提供 md5 实现，用 --allow-multiple-definition 解决
           ifeq ($(HAVE_CHEEVOS), 1)
           DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
           INCLUDE_DIRS += -Ideps/rcheevos/include
           LIBS += -lrcheevos
+          LDFLAGS += -Wl,--allow-multiple-definition
           OBJ += cheevos/cheevos.o \
                  cheevos/cheevos_client.o \
                  cheevos/cheevos_menu.o
@@ -145,12 +147,6 @@ jobs:
 
             echo "🔗 链接 RetroArch 前端（含 cheevos）..."
             cd RetroArch
-
-            # 从静态库中移除 md5.o，避免与 rcheevos 的 md5 符号冲突
-            # 链接器用的是 libretro_emscripten.a，不是 .bc 文件
-            if command -v llvm-ar &> /dev/null; then
-              llvm-ar d libretro_emscripten.a md5.o 2>/dev/null && echo "🔧 已从 libretro_emscripten.a 移除 md5.o" || echo "ℹ️ md5.o 不存在或已移除"
-            fi
 
             # 添加 rcheevos 静态库路径
             export LIBRARY_PATH="$PWD:$LIBRARY_PATH"
