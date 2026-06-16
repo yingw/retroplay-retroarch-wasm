@@ -51,6 +51,30 @@ jobs:
           TAG="${{ github.event.inputs.retroarch_tag || 'v1.22.2' }}"
           git clone --depth=1 --branch "$TAG" https://github.com/libretro/RetroArch.git
 
+      - name: Patch Makefile.emscripten for cheevos
+        run: |
+          cd RetroArch
+          echo "=== Patching Makefile.emscripten ==="
+
+          # 1. 在 HAVE_NETWORKING 后面加 HAVE_CHEEVOS 默认值
+          sed -i 's/^HAVE_NETWORKING ?= 1/HAVE_NETWORKING ?= 1\nHAVE_CHEEVOS ?= 0/' Makefile.emscripten
+
+          # 2. 在文件末尾追加 cheevos 编译逻辑
+          cat >> Makefile.emscripten << 'PATCH'
+
+          # RetroPlay patch: RetroAchievements (cheevos) support
+          ifeq ($(HAVE_CHEEVOS), 1)
+          DEFINES += -DHAVE_CHEEVOS -DHAVE_RC_CLIENT
+          SOURCES += \
+            cheevos/cheevos.c \
+            cheevos/cheevos_client.c \
+            cheevos/cheevos_locals.h
+          endif
+          PATCH
+
+          echo "=== Patched Makefile.emscripten ==="
+          grep -A5 "RetroPlay patch" Makefile.emscripten
+
       - name: Build cores
         run: |
           declare -A CORE_REPOS
