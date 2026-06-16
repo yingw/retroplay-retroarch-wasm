@@ -63,12 +63,9 @@ jobs:
           ls -lh ra_memory_export.o
           echo "✅ ra_memory_export.o 已生成"
 
-          # 2. 在 Makefile.emscripten 的 OBJ 列表末尾追加 ra_memory_export.o
-          cat >> Makefile.emscripten << 'PATCH'
-
-          # RetroPlay patch: export RAM pointer for JS-side cheevos
-          OBJ += ra_memory_export.o
-          PATCH
+          # 2. 把 ra_memory_export.o 加入 LIBS，确保链接时包含
+          # OBJ 只控制编译，LIBS 才参与最终链接
+          sed -i 's|^LIBS   := -s USE_ZLIB=1|LIBS   := ra_memory_export.o -s USE_ZLIB=1|' Makefile.emscripten
 
           # 3. 把 ra_get_ram_ptr / ra_get_ram_size 加入 EXPORTED_FUNCTIONS
           # Makefile.emscripten 用 EXPORTED_FUNCTIONS 显式控制导出，EMSCRIPTEN_KEEPALIVE 不够
