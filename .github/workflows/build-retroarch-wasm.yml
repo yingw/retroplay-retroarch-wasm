@@ -69,8 +69,12 @@ jobs:
 
           # RetroPlay patch: RetroAchievements (cheevos) support
           # 参考 Makefile.common 中 HAVE_CHEEVOS=1 的源文件列表
+          # md5 符号重命名：避免与 fceumm 等核心自带的 md5 符号冲突
           ifeq ($(HAVE_CHEEVOS), 1)
-          DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
+          DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS \
+                     -Dmd5_init=rc_md5_init \
+                     -Dmd5_append=rc_md5_append \
+                     -Dmd5_finish=rc_md5_finish
           INCLUDE_DIRS += -Ideps/rcheevos/include
           OBJ += cheevos/cheevos.o \
                  cheevos/cheevos_client.o \
