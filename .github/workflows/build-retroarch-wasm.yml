@@ -70,6 +70,10 @@ jobs:
           OBJ += ra_memory_export.o
           PATCH
 
+          # 3. 把 ra_get_ram_ptr / ra_get_ram_size 加入 EXPORTED_FUNCTIONS
+          # Makefile.emscripten 用 EXPORTED_FUNCTIONS 显式控制导出，EMSCRIPTEN_KEEPALIVE 不够
+          sed -i 's|EXPORTED_FUNCTIONS = |EXPORTED_FUNCTIONS = _ra_get_ram_ptr,_ra_get_ram_size,|' Makefile.emscripten
+
           echo "=== Patched Makefile.emscripten ==="
           tail -5 Makefile.emscripten
 
