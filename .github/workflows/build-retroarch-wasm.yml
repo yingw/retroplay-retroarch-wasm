@@ -51,25 +51,37 @@ jobs:
           TAG="${{ github.event.inputs.retroarch_tag || 'v1.22.2' }}"
           git clone --depth=1 --branch "$TAG" https://github.com/libretro/RetroArch.git
 
-      - name: Patch Makefile.emscripten for memory export
+      - name: Patch RetroArch for memory export
         run: |
           cd RetroArch
 
-          # 1. 编译 ra_memory_export.c 为 .o
-          echo "=== 编译 ra_memory_export.c ==="
-          emcc -O2 -c "${{ github.workspace }}/ra_memory_export.c" \
-            -o ra_memory_export.o \
-            -I. -Ilibretro-common/include
-          ls -lh ra_memory_export.o
-          echo "✅ ra_memory_export.o 已生成"
+          # 把 memory export 函数直接写入 RetroArch 前端代码（cheevos.c 旁边）
+          # 这样 retro_get_memory_data 在同一个编译单元，链接器一定能解析
+          cat > cheevos/ra_memory_export.c << 'CEOF'
+          // RetroPlay: 导出模拟器 RAM 指针给 JS 层
+          #include <emscripten.h>
+          #include "../libretro.h"
 
-          # 2. 把 ra_memory_export.o 加入 LIBS，确保链接时包含
-          # OBJ 只控制编译，LIBS 才参与最终链接
-          sed -i 's|^LIBS   := -s USE_ZLIB=1|LIBS   := ra_memory_export.o -s USE_ZLIB=1|' Makefile.emscripten
+          EMSCRIPTEN_KEEPALIVE
+          void* ra_get_ram_ptr(void) {
+              return retro_get_memory_data(RETRO_MEMORY_SYSTEM_RAM);
+          }
 
-          # 3. 把 ra_get_ram_ptr / ra_get_ram_size 加入 EXPORTED_FUNCTIONS
-          # Makefile.emscripten 用 EXPORTED_FUNCTIONS 显式控制导出，EMSCRIPTEN_KEEPALIVE 不够
+          EMSCRIPTEN_KEEPALIVE
+          unsigned ra_get_ram_size(void) {
+              return retro_get_memory_size(RETRO_MEMORY_SYSTEM_RAM);
+          }
+          CEOF
+
+          # 把 ra_memory_export.o 加入 cheevos 的 OBJ 列表
+          sed -i '/cheevos\/cheevos_menu\.o/a\                 cheevos/ra_memory_export.o' Makefile.emscripten
+
+          # 把 ra_get_ram_ptr / ra_get_ram_size 加入 EXPORTED_FUNCTIONS
           sed -i 's|EXPORTED_FUNCTIONS = |EXPORTED_FUNCTIONS = _ra_get_ram_ptr,_ra_get_ram_size,|' Makefile.emscripten
+
+          echo "=== 验证 patch ==="
+          grep "ra_memory_export" Makefile.emscripten
+          grep "_ra_get_ram_ptr" Makefile.emscripten
 
           echo "=== Patched Makefile.emscripten ==="
           tail -5 Makefile.emscripten
