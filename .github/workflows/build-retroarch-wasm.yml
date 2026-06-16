@@ -56,60 +56,49 @@ jobs:
           cd RetroArch
           echo "=== Patching Makefile.emscripten ==="
 
-          # 1. 在 HAVE_NETWORKING 后面加 HAVE_CHEEVOS 默认值
-          sed -i 's/^HAVE_NETWORKING ?= 1/HAVE_NETWORKING ?= 1\nHAVE_CHEEVOS ?= 0/' Makefile.emscripten
-
-          # 2. 克隆 rcheevos 依赖
+          # 1. 克隆 rcheevos 依赖
           rm -rf deps/rcheevos
           mkdir -p deps
           git clone --depth=1 https://github.com/RetroAchievements/rcheevos.git deps/rcheevos
 
-          # 3. 在文件末尾追加 cheevos 编译逻辑（用 OBJ 而不是 SOURCES）
+          # 2. 预编译 rcheevos 为静态库（独立于 emmake）
+          RCHEEVOS_DIR="deps/rcheevos/src"
+          RCHEEVOS_INCLUDE="-Ideps/rcheevos/include -Ideps/rcheevos/src"
+          RCHEEVOS_DEFINES="-DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS"
+
+          echo "=== 编译 rcheevos 源文件 ==="
+          find "$RCHEEVOS_DIR" -name "*.c" | while read f; do
+            OUT="${f%.c}.o"
+            emcc $RCHEEVOS_DEFINES $RCHEEVOS_INCLUDE -O2 -c "$f" -o "$OUT" 2>&1 | tail -1
+            echo "compiled: $OUT"
+          done
+
+          echo "=== 打包 librcheevos.a ==="
+          find "$RCHEEVOS_DIR" -name "*.o" > /tmp/rcheevos_objs.txt
+          emar rcs librcheevos.a $(cat /tmp/rcheevos_objs.txt)
+          ls -lh librcheevos.a
+          echo "✅ librcheevos.a 已生成"
+
+          # 3. 在 HAVE_NETWORKING 后面加 HAVE_CHEEVOS 默认值
+          sed -i 's/^HAVE_NETWORKING ?= 1/HAVE_NETWORKING ?= 1\nHAVE_CHEEVOS ?= 0/' Makefile.emscripten
+
+          # 4. 追加 cheevos 编译逻辑（只编译 RetroArch 自己的 cheevos 模块）
           cat >> Makefile.emscripten << 'PATCH'
 
           # RetroPlay patch: RetroAchievements (cheevos) support
-          # 参考 Makefile.common 中 HAVE_CHEEVOS=1 的源文件列表
-          # md5 冲突通过 llvm-ar 从 core .bc 中移除 md5.o 解决
+          # rcheevos 由 librcheevos.a 提供，这里只编译 RetroArch 自己的 cheevos 模块
           ifeq ($(HAVE_CHEEVOS), 1)
           DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
           INCLUDE_DIRS += -Ideps/rcheevos/include
+          LIBS += -lrcheevos
           OBJ += cheevos/cheevos.o \
                  cheevos/cheevos_client.o \
-                 cheevos/cheevos_menu.o \
-                 deps/rcheevos/src/rc_client.o \
-                 deps/rcheevos/src/rc_compat.o \
-                 deps/rcheevos/src/rc_libretro.o \
-                 deps/rcheevos/src/rc_util.o \
-                 deps/rcheevos/src/rcheevos/alloc.o \
-                 deps/rcheevos/src/rcheevos/condition.o \
-                 deps/rcheevos/src/rcheevos/condset.o \
-                 deps/rcheevos/src/rcheevos/consoleinfo.o \
-                 deps/rcheevos/src/rcheevos/format.o \
-                 deps/rcheevos/src/rcheevos/lboard.o \
-                 deps/rcheevos/src/rcheevos/memref.o \
-                 deps/rcheevos/src/rcheevos/operand.o \
-                 deps/rcheevos/src/rcheevos/richpresence.o \
-                 deps/rcheevos/src/rcheevos/runtime.o \
-                 deps/rcheevos/src/rcheevos/runtime_progress.o \
-                 deps/rcheevos/src/rcheevos/trigger.o \
-                 deps/rcheevos/src/rcheevos/value.o \
-                 deps/rcheevos/src/rhash/aes.o \
-                 deps/rcheevos/src/rhash/cdreader.o \
-                 deps/rcheevos/src/rhash/md5.o \
-                 deps/rcheevos/src/rhash/hash.o \
-                 deps/rcheevos/src/rhash/hash_disc.o \
-                 deps/rcheevos/src/rhash/hash_encrypted.o \
-                 deps/rcheevos/src/rhash/hash_rom.o \
-                 deps/rcheevos/src/rhash/hash_zip.o \
-                 deps/rcheevos/src/rapi/rc_api_common.o \
-                 deps/rcheevos/src/rapi/rc_api_info.o \
-                 deps/rcheevos/src/rapi/rc_api_runtime.o \
-                 deps/rcheevos/src/rapi/rc_api_user.o
+                 cheevos/cheevos_menu.o
           endif
           PATCH
 
           echo "=== Patched Makefile.emscripten ==="
-          grep -A5 "RetroPlay patch" Makefile.emscripten
+          grep -A10 "RetroPlay patch" Makefile.emscripten
 
       - name: Build cores
         run: |
@@ -164,12 +153,15 @@ jobs:
               llvm-ar d libretro_emscripten.bc md5.o 2>/dev/null && echo "🔧 已移除 md5.o 避免符号冲突" || echo "ℹ️ md5.o 不存在或已移除"
             fi
 
+            # 添加 rcheevos 静态库路径
+            export LIBRARY_PATH="$PWD:$LIBRARY_PATH"
+
             emmake make -f Makefile.emscripten \
               LIBRETRO="${CORE}" \
               HAVE_CHEEVOS=1 \
               HAVE_NETWORKING=1 \
               HAVE_OPENGLES3=1 \
-              -j$(nproc) 2>&1 | tail -30
+              -j$(nproc) 2>&1 | tail -50
 
             if [ -f "${CORE}_libretro.js" ] && [ -f "${CORE}_libretro.wasm" ]; then
               mkdir -p "../dist"
