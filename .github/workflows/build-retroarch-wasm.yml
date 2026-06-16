@@ -148,9 +148,10 @@ jobs:
 
             # 从 .bc 中移除 md5.o，避免与 rcheevos 的 md5 符号冲突
             # fceumm 的 md5.o 只用于 ROM 校验，删除不影响模拟功能
-            # 必须在 emmake make 之前执行（emmake 会重新打包 .bc）
-            if command -v llvm-ar &> /dev/null; then
-              llvm-ar d libretro_emscripten.bc md5.o 2>/dev/null && echo "🔧 已移除 md5.o 避免符号冲突" || echo "ℹ️ md5.o 不存在或已移除"
+            # 注意：emmake 生成的文件名是 {CORE}_libretro_emscripten.bc
+            BC_FILE="${CORE}_libretro_emscripten.bc"
+            if [ -f "$BC_FILE" ] && command -v llvm-ar &> /dev/null; then
+              llvm-ar d "$BC_FILE" md5.o 2>/dev/null && echo "🔧 已从 $BC_FILE 移除 md5.o" || echo "ℹ️ md5.o 不存在或已移除"
             fi
 
             # 添加 rcheevos 静态库路径
