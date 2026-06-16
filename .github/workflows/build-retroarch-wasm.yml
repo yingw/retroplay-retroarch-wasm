@@ -1,0 +1,201 @@
+name: Build RetroArch WASM with Cheevos
+
+on:
+  workflow_dispatch:
+    inputs:
+      retroarch_tag:
+        description: 'RetroArch 版本 tag'
+        required: false
+        default: 'v1.22.2'
+      cores:
+        description: '要编译的 cores（逗号分隔）'
+        required: false
+        default: 'fceumm,snes9x,gambatte,mgba,genesis_plus_gx'
+
+  push:
+    tags:
+      - 'release-*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential git python3 cmake \
+            pkg-config zlib1g-dev p7zip-full
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.46
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Cache RetroArch source
+        uses: actions/cache@v4
+        id: cache-retroarch
+        with:
+          path: RetroArch
+          key: retroarch-src-${{ github.event.inputs.retroarch_tag || 'v1.22.2' }}
+
+      - name: Clone RetroArch
+        if: steps.cache-retroarch.outputs.cache-hit != 'true'
+        run: |
+          TAG="${{ github.event.inputs.retroarch_tag || 'v1.22.2' }}"
+          git clone --depth=1 --branch "$TAG" https://github.com/libretro/RetroArch.git
+
+      - name: Build cores
+        run: |
+          declare -A CORE_REPOS
+          CORE_REPOS["fceumm"]="libretro/libretro-fceumm"
+          CORE_REPOS["snes9x"]="libretro/snes9x"
+          CORE_REPOS["mgba"]="libretro/mgba"
+          CORE_REPOS["genesis_plus_gx"]="libretro/Genesis-Plus-GX"
+          CORE_REPOS["gambatte"]="libretro/gambatte-libretro"
+
+          CORES="${{ github.event.inputs.cores || 'fceumm,snes9x,mgba,genesis_plus_gx,gambatte' }}"
+          mkdir -p dist
+
+          IFS=',' read -ra CORE_LIST <<< "$CORES"
+          for CORE in "${CORE_LIST[@]}"; do
+            CORE=$(echo "$CORE" | xargs)
+            REPO="${CORE_REPOS[$CORE]}"
+
+            if [ -z "$REPO" ]; then
+              echo "⚠️  未知 core: $CORE，跳过"
+              continue
+            fi
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔨 开始编译 core: $CORE"
+            echo "   repo: $REPO"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
+            cd "core_${CORE}"
+            emmake make -f Makefile platform=emscripten -j$(nproc) 2>&1 | tail -30
+
+            BC_FILE=$(find . -name "*_libretro_emscripten.bc" -o -name "*_libretro_emscripten.a" | head -1)
+
+            if [ -z "$BC_FILE" ]; then
+              echo "❌ 未找到编译产物，core 编译失败: $CORE"
+              cd ..
+              continue
+            fi
+
+            echo "✅ core 编译成功: $BC_FILE"
+            cp "$BC_FILE" ../RetroArch/libretro_emscripten.bc
+            cd ..
+
+            echo "🔗 链接 RetroArch 前端（含 cheevos）..."
+            cd RetroArch
+            emmake make -f Makefile.emscripten \
+              LIBRETRO="${CORE}" \
+              HAVE_CHEEVOS=1 \
+              HAVE_NETWORKING=1 \
+              HAVE_OPENGLES3=1 \
+              -j$(nproc) 2>&1 | tail -30
+
+            if [ -f "${CORE}_libretro.js" ] && [ -f "${CORE}_libretro.wasm" ]; then
+              mkdir -p "../dist"
+              cp "${CORE}_libretro.js" "../dist/"
+              cp "${CORE}_libretro.wasm" "../dist/"
+              echo "📦 产物已生成: dist/${CORE}_libretro.js / .wasm"
+
+              CHEEVOS_COUNT=$(grep -c "cheevos" "${CORE}_libretro.js" 2>/dev/null || echo 0)
+              echo "🏆 cheevos 相关字符串数量: $CHEEVOS_COUNT"
+              if [ "$CHEEVOS_COUNT" -gt 0 ]; then
+                echo "✅ cheevos 已确认编译进入产物"
+              else
+                echo "⚠️  警告：未在产物中检测到 cheevos，请检查编译参数"
+              fi
+            else
+              echo "❌ 前端链接失败，未生成 .js/.wasm"
+            fi
+
+            make -f Makefile.emscripten clean 2>/dev/null || true
+            cd ..
+          done
+
+      - name: Organize output
+        run: |
+          mkdir -p output/retroarch
+          cp dist/*.js output/retroarch/ 2>/dev/null || true
+          cp dist/*.wasm output/retroarch/ 2>/dev/null || true
+
+          CORES_JSON=$(echo '${{ github.event.inputs.cores || "fceumm,snes9x,mgba,genesis_plus_gx,gambatte" }}' \
+            | tr ',' '\n' \
+            | xargs -I{} echo '"{}"' \
+            | tr '\n' ',' \
+            | sed 's/,$//')
+
+          cat > output/manifest.json << EOF
+          {
+            "built_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "retroarch_tag": "${{ github.event.inputs.retroarch_tag || 'v1.22.2' }}",
+            "emscripten_version": "3.1.46",
+            "features": {
+              "cheevos": true,
+              "networking": true,
+              "opengles3": true
+            },
+            "cores": [$CORES_JSON]
+          }
+          EOF
+
+          echo "📋 最终产物："
+          ls -lh output/retroarch/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: retroarch-wasm-cheevos-${{ github.run_number }}
+          path: output/
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "RetroArch WASM + Cheevos ${{ github.ref_name }}"
+          body: |
+            ## RetroArch WASM（含 RetroAchievements 支持）
+
+            ### 编译参数
+            - RetroArch: `${{ github.event.inputs.retroarch_tag || 'v1.22.2' }}`
+            - Emscripten: `3.1.46`
+            - `HAVE_CHEEVOS=1` ✅
+            - `HAVE_NETWORKING=1` ✅
+
+            ### 使用方法
+            ```typescript
+            const CDN = 'https://cdn.jsdelivr.net/gh/${{ github.repository }}@${{ github.ref_name }}/output/retroarch';
+
+            await Nostalgist.launch({
+              core: {
+                js: `${CDN}/fceumm_libretro.js`,
+                wasm: `${CDN}/fceumm_libretro.wasm`,
+              },
+              retroarchConfig: {
+                cheevos_enable: true,
+                cheevos_username: raUsername,
+                cheevos_password: raPassword,
+                cheevos_hardcore_mode_enable: false,
+                cheevos_verbose_enable: true,
+              },
+              rom: romData,
+            });
+            ```
+          files: |
+            output/retroarch/*.js
+            output/retroarch/*.wasm
+            output/manifest.json
+          draft: false
+          prerelease: false
