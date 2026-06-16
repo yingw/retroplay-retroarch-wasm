@@ -76,6 +76,16 @@ jobs:
             fi
           done
 
+          # 解决 md5_finish 符号冲突：只重命名 md5_finish（唯一签名相同的）
+          # md5_init/md5_append 签名不同，链接器能区分，不动
+          echo "=== 重命名 rcheevos md5_finish ==="
+          find "$RCHEEVOS_DIR" -name "*.c" -o -name "*.h" | while read f; do
+            if grep -q "md5_finish" "$f" 2>/dev/null; then
+              sed -i 's/\bmd5_finish\b/rc_md5_finish/g' "$f"
+              echo "  patched: $f"
+            fi
+          done
+
           echo "=== 编译 rcheevos 源文件 ==="
           find "$RCHEEVOS_DIR" -name "*.c" | while read f; do
             OUT="${f%.c}.o"
