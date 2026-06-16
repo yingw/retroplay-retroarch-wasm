@@ -150,19 +150,29 @@ jobs:
             # 添加 rcheevos 静态库路径
             export LIBRARY_PATH="$PWD:$LIBRARY_PATH"
 
+            # Step 1: 编译 RetroArch 前端 + core（不链接）
+            # 先编译所有 .o 文件
             emmake make -f Makefile.emscripten \
               LIBRETRO="${CORE}" \
               HAVE_CHEEVOS=1 \
               HAVE_NETWORKING=1 \
               HAVE_OPENGLES3=1 \
-              -j$(nproc) 2>&1 | tail -50
+              obj-emscripten -j$(nproc) 2>&1 | tail -20
 
-            # 从 core .a 中移除 md5.o（fceumm 的 md5 签名与 rcheevos 的 md5_finish 冲突）
+            # Step 2: 从 core .a 中移除 md5.o（fceumm 的 md5_finish 与 rcheevos 冲突）
             if [ -f "libretro_emscripten.a" ]; then
               emar d libretro_emscripten.a md5.o 2>/dev/null && \
                 echo "🔧 已从 libretro_emscripten.a 移除 md5.o" || \
                 echo "ℹ️ md5.o 不存在或已移除"
             fi
+
+            # Step 3: 链接（用修改后的 .a）
+            emmake make -f Makefile.emscripten \
+              LIBRETRO="${CORE}" \
+              HAVE_CHEEVOS=1 \
+              HAVE_NETWORKING=1 \
+              HAVE_OPENGLES3=1 \
+              "${CORE}_libretro.js" -j1 2>&1 | tail -20
 
             if [ -f "${CORE}_libretro.js" ] && [ -f "${CORE}_libretro.wasm" ]; then
               mkdir -p "../dist"
