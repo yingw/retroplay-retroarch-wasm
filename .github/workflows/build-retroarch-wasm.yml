@@ -66,6 +66,23 @@ jobs:
           RCHEEVOS_INCLUDE="-Ideps/rcheevos/include -Ideps/rcheevos/src"
           RCHEEVOS_DEFINES="-DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS"
 
+          # 解决 md5_finish 符号冲突：重命名 rcheevos 的 md5_finish
+          # fceumm 也有 md5_finish，签名相同导致链接冲突
+          MD5_FILE="$RCHEEVOS_DIR/rhash/md5.c"
+          if [ -f "$MD5_FILE" ]; then
+            sed -i 's/md5_finish/rc_md5_finish/g' "$MD5_FILE"
+            sed -i 's/md5_init/rc_md5_init/g' "$MD5_FILE"
+            sed -i 's/md5_append/rc_md5_append/g' "$MD5_FILE"
+            echo "🔧 已重命名 rcheevos md5 函数避免冲突"
+          fi
+          # 同时修改头文件
+          MD5_H="$RCHEEVOS_DIR/rhash/md5.h"
+          if [ -f "$MD5_H" ]; then
+            sed -i 's/md5_finish/rc_md5_finish/g' "$MD5_H"
+            sed -i 's/md5_init/rc_md5_init/g' "$MD5_H"
+            sed -i 's/md5_append/rc_md5_append/g' "$MD5_H"
+          fi
+
           echo "=== 编译 rcheevos 源文件 ==="
           find "$RCHEEVOS_DIR" -name "*.c" | while read f; do
             OUT="${f%.c}.o"
@@ -87,7 +104,7 @@ jobs:
 
           # RetroPlay patch: RetroAchievements (cheevos) support
           # rcheevos 由 librcheevos.a 提供，这里只编译 RetroArch 自己的 cheevos 模块
-          # md5 符号冲突：排除 core 的 md5.o，让 rcheevos 提供 md5 实现
+          # md5 符号冲突通过重命名 rcheevos 的 md5 函数解决
           ifeq ($(HAVE_CHEEVOS), 1)
           DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
           INCLUDE_DIRS += -Ideps/rcheevos/include
@@ -95,9 +112,6 @@ jobs:
           OBJ += cheevos/cheevos.o \
                  cheevos/cheevos_client.o \
                  cheevos/cheevos_menu.o
-          # 从 OBJ 中排除 md5.o（fceumm 的 md5 实现与 rcheevos 的 md5_finish 冲突）
-          # fceumm 的 md5 路径是 src/md5.o
-          OBJ := $(filter-out src/md5.o,$(OBJ))
           endif
           PATCH
 
