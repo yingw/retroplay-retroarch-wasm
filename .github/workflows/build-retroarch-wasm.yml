@@ -151,18 +151,19 @@ jobs:
             fi
 
             echo "✅ core 编译成功: $BC_FILE"
-
-            # 从 .bc 中移除 md5.o，避免与 rcheevos 的 md5 符号冲突
-            # fceumm 的 md5.o 只用于 ROM 校验，删除不影响模拟功能
-            if command -v llvm-ar &> /dev/null; then
-              llvm-ar d "$BC_FILE" md5.o 2>/dev/null && echo "🔧 已移除 md5.o 避免符号冲突" || echo "ℹ️ md5.o 不存在或已移除"
-            fi
-
             cp "$BC_FILE" ../RetroArch/libretro_emscripten.bc
             cd ..
 
             echo "🔗 链接 RetroArch 前端（含 cheevos）..."
             cd RetroArch
+
+            # 从 .bc 中移除 md5.o，避免与 rcheevos 的 md5 符号冲突
+            # fceumm 的 md5.o 只用于 ROM 校验，删除不影响模拟功能
+            # 必须在 emmake make 之前执行（emmake 会重新打包 .bc）
+            if command -v llvm-ar &> /dev/null; then
+              llvm-ar d libretro_emscripten.bc md5.o 2>/dev/null && echo "🔧 已移除 md5.o 避免符号冲突" || echo "ℹ️ md5.o 不存在或已移除"
+            fi
+
             emmake make -f Makefile.emscripten \
               LIBRETRO="${CORE}" \
               HAVE_CHEEVOS=1 \
