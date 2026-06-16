@@ -60,7 +60,7 @@ jobs:
           CORE_REPOS["genesis_plus_gx"]="libretro/Genesis-Plus-GX"
           CORE_REPOS["gambatte"]="libretro/gambatte-libretro"
 
-          CORES="${{ github.event.inputs.cores || 'fceumm,snes9x,mgba,genesis_plus_gx,gambatte' }}"
+          CORES="${{ github.event.inputs.cores || 'fceumm' }}"
           mkdir -p dist
 
           IFS=',' read -ra CORE_LIST <<< "$CORES"
