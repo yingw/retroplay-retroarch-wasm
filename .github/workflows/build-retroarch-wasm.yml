@@ -59,16 +59,31 @@ jobs:
           # 1. 在 HAVE_NETWORKING 后面加 HAVE_CHEEVOS 默认值
           sed -i 's/^HAVE_NETWORKING ?= 1/HAVE_NETWORKING ?= 1\nHAVE_CHEEVOS ?= 0/' Makefile.emscripten
 
-          # 2. 在文件末尾追加 cheevos 编译逻辑
+          # 2. 克隆 rcheevos 依赖
+          git clone --depth=1 https://github.com/RetroAchievements/rcheevos.git deps/rcheevos
+
+          # 3. 在文件末尾追加 cheevos 编译逻辑
           cat >> Makefile.emscripten << 'PATCH'
 
           # RetroPlay patch: RetroAchievements (cheevos) support
           ifeq ($(HAVE_CHEEVOS), 1)
-          DEFINES += -DHAVE_CHEEVOS -DHAVE_RC_CLIENT
+          DEFINES += -DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS
+          INCLUDE_DIRS += -Ideps/rcheevos/include
           SOURCES += \
             cheevos/cheevos.c \
             cheevos/cheevos_client.c \
-            cheevos/cheevos_locals.h
+            cheevos/cheevos_menu.c \
+            deps/rcheevos/src/rc_client.c \
+            deps/rcheevos/src/rc_client_raintegration.c \
+            deps/rcheevos/src/rc_client_common.c \
+            deps/rcheevos/src/rc_hash.c \
+            deps/rcheevos/src/rc_runtime.c \
+            deps/rcheevos/src/rc_runtime_common.c \
+            deps/rcheevos/src/rc_url.c \
+            deps/rcheevos/src/rc_util.c \
+            deps/rcheevos/src/rcheevos.c \
+            deps/rcheevos/src/rhash/md5.c \
+            deps/rcheevos/src/rhash/hash.c
           endif
           PATCH
 
