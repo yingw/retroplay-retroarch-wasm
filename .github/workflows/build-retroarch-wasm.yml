@@ -60,7 +60,7 @@ jobs:
           CORE_REPOS["genesis_plus_gx"]="libretro/Genesis-Plus-GX"
           CORE_REPOS["gambatte"]="libretro/gambatte-libretro"
 
-          CORES="${{ github.event.inputs.cores || 'fceumm' }}"
+          CORES="${{ github.event.inputs.cores }}"
           mkdir -p dist
 
           IFS=',' read -ra CORE_LIST <<< "$CORES"
@@ -130,7 +130,7 @@ jobs:
           cp dist/*.js output/retroarch/ 2>/dev/null || true
           cp dist/*.wasm output/retroarch/ 2>/dev/null || true
 
-          CORES_JSON=$(echo '${{ github.event.inputs.cores || "fceumm" }}' \
+          CORES_JSON=$(echo '${{ github.event.inputs.cores }}' \
             | tr ',' '\n' \
             | xargs -I{} echo '"{}"' \
             | tr '\n' ',' \
