@@ -58,9 +58,8 @@ jobs:
           # 把 memory export 函数直接写入 RetroArch 前端代码（cheevos.c 旁边）
           # 这样 retro_get_memory_data 在同一个编译单元，链接器一定能解析
           cat > cheevos/ra_memory_export.c << 'CEOF'
-          // RetroPlay: 导出模拟器 RAM 指针给 JS 层
           #include <emscripten.h>
-          #include "../libretro.h"
+          #include "libretro.h"
 
           EMSCRIPTEN_KEEPALIVE
           void* ra_get_ram_ptr(void) {
