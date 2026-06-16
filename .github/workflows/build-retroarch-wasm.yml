@@ -73,9 +73,9 @@ jobs:
           }
           CEOF
 
-          # 把 ra_memory_export.o 加入 OBJ 列表（在文件末尾追加，无条件编译）
-          # 不能放在 ifeq 块内，否则 HAVE_CHEEVOS=0 时不编译
-          echo 'OBJ += cheevos/ra_memory_export.o' >> Makefile.emscripten
+          # 把 ra_memory_export.o 加入 OBJ 列表
+          # 必须在 RARCH_OBJ := $(addprefix ...) 之前，因为 := 立即求值
+          sed -i '/^RARCH_OBJ/i\OBJ += cheevos/ra_memory_export.o' Makefile.emscripten
 
           # 把 ra_get_ram_ptr / ra_get_ram_size 加入 EXPORTED_FUNCTIONS
           sed -i 's|EXPORTED_FUNCTIONS = |EXPORTED_FUNCTIONS = _ra_get_ram_ptr,_ra_get_ram_size,|' Makefile.emscripten
