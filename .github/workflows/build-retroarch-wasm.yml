@@ -59,8 +59,12 @@ jobs:
           # 1. 在 HAVE_NETWORKING 后面加 HAVE_CHEEVOS 默认值
           sed -i 's/^HAVE_NETWORKING ?= 1/HAVE_NETWORKING ?= 1\nHAVE_CHEEVOS ?= 0/' Makefile.emscripten
 
-          # 2. 克隆 rcheevos 依赖
-          git clone --depth=1 https://github.com/RetroAchievements/rcheevos.git deps/rcheevos
+          # 2. 克隆 rcheevos 依赖（如果不存在）
+          if [ ! -d "deps/rcheevos" ]; then
+            git clone --depth=1 https://github.com/RetroAchievements/rcheevos.git deps/rcheevos
+          else
+            echo "deps/rcheevos already exists, skipping clone"
+          fi
 
           # 3. 在文件末尾追加 cheevos 编译逻辑
           cat >> Makefile.emscripten << 'PATCH'
