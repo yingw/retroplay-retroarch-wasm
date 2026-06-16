@@ -130,7 +130,7 @@ jobs:
           cp dist/*.js output/retroarch/ 2>/dev/null || true
           cp dist/*.wasm output/retroarch/ 2>/dev/null || true
 
-          CORES_JSON=$(echo '${{ github.event.inputs.cores || "fceumm,snes9x,mgba,genesis_plus_gx,gambatte" }}' \
+          CORES_JSON=$(echo '${{ github.event.inputs.cores || "fceumm" }}' \
             | tr ',' '\n' \
             | xargs -I{} echo '"{}"' \
             | tr '\n' ',' \
