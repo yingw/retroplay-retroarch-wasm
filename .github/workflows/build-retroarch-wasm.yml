@@ -66,8 +66,8 @@ jobs:
           RCHEEVOS_INCLUDE="-Ideps/rcheevos/include -Ideps/rcheevos/src"
           RCHEEVOS_DEFINES="-DHAVE_CHEEVOS -DRC_CLIENT_SUPPORTS_HASH -DRC_NO_THREADS"
 
-          echo "=== 编译 rcheevos 源文件（跳过 md5.c，使用 core 的 md5 实现）==="
-          find "$RCHEEVOS_DIR" -name "*.c" ! -name "md5.c" | while read f; do
+          echo "=== 编译 rcheevos 源文件 ==="
+          find "$RCHEEVOS_DIR" -name "*.c" | while read f; do
             OUT="${f%.c}.o"
             emcc $RCHEEVOS_DEFINES $RCHEEVOS_INCLUDE -O2 -c "$f" -o "$OUT" 2>&1 | tail -1
             echo "compiled: $OUT"
@@ -156,6 +156,13 @@ jobs:
               HAVE_NETWORKING=1 \
               HAVE_OPENGLES3=1 \
               -j$(nproc) 2>&1 | tail -50
+
+            # 从 core .a 中移除 md5.o（fceumm 的 md5 签名与 rcheevos 的 md5_finish 冲突）
+            if [ -f "libretro_emscripten.a" ]; then
+              emar d libretro_emscripten.a md5.o 2>/dev/null && \
+                echo "🔧 已从 libretro_emscripten.a 移除 md5.o" || \
+                echo "ℹ️ md5.o 不存在或已移除"
+            fi
 
             if [ -f "${CORE}_libretro.js" ] && [ -f "${CORE}_libretro.wasm" ]; then
               mkdir -p "../dist"
