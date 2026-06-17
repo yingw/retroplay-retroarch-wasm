@@ -73,6 +73,9 @@ jobs:
             git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
             cd "core_${CORE}"
 
+            # 保存 repo 根目录（cd 后需要找回 RetroArch 路径）
+            REPO_DIR="$PWD"
+
             # 不同 core 的 Makefile 路径不同
             if [ -f "Makefile" ]; then
               MAKEFILE="Makefile"
@@ -106,8 +109,8 @@ jobs:
             fi
 
             echo "✅ core 编译成功: $BC_FILE"
-            cp "$BC_FILE" ../RetroArch/libretro_emscripten.bc
-            cd ..
+            cp "$BC_FILE" "$REPO_DIR/RetroArch/libretro_emscripten.bc"
+            cd "$REPO_DIR"
 
             echo "🔗 链接 RetroArch 前端..."
             cd RetroArch
