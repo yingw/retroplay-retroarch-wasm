@@ -121,15 +121,12 @@ jobs:
             echo 'LDFLAGS += -s EMULATE_FUNCTION_POINTER_CASTS=1' >> Makefile.emscripten
 
             # 关键编译参数：
-            # - HAVE_NETWORKING=0: 不需要网络层
-            # - USE_PTHREADS=0: 强制单线程，避免 pthread 代理导致命令处理失效
-            #   （crossOriginIsolated=false 时 SharedArrayBuffer 不可用，线程通信会静默失败）
+            # - HAVE_NETWORKING=1: 命令接口（READ_CORE_MEMORY）依赖 networking 编译
             # - 统一 -O2 优化等级（core 和 frontend 一致）
             emmake make -f Makefile.emscripten \
               LIBRETRO="${CORE}" \
               HAVE_OPENGLES3=1 \
-              HAVE_NETWORKING=0 \
-              -s USE_PTHREADS=0 \
+              HAVE_NETWORKING=1 \
               -j$(nproc) 2>&1 | tail -30
 
             if [ -f "${CORE}_libretro.js" ] && [ -f "${CORE}_libretro.wasm" ]; then
