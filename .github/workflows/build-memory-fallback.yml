@@ -94,8 +94,8 @@ jobs:
             # 添加 EMULATE_FUNCTION_POINTER_CASTS=1 到 LDFLAGS
             # 这个参数让 Emscripten 自动处理隐式函数指针类型转换
             # 是防止 call_indirect 崩溃的关键
-            # LDFLAGS 跨多行，必须追加到最后一行（library_platform_emscripten.js 后面）
-            sed -i '/library_platform_emscripten\.js$/s|$| \\\\\n           -s EMULATE_FUNCTION_POINTER_CASTS=1|' Makefile.emscripten
+            # 在 Makefile.emscripten 的 LDFLAGS 定义块之后追加一行
+            sed -i '/^LIBS   := -s USE_ZLIB=1/i\LDFLAGS += -s EMULATE_FUNCTION_POINTER_CASTS=1' Makefile.emscripten
 
             # 关键编译参数：
             # - HAVE_NETWORKING=0: 不需要网络层
