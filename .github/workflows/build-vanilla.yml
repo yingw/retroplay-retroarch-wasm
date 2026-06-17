@@ -1,0 +1,63 @@
+name: Build Vanilla RetroArch WASM (No Patches)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git python3 cmake pkg-config zlib1g-dev p7zip-full
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.48
+
+      - name: Clone RetroArch
+        run: |
+          git clone --depth=1 --branch v1.22.2 https://github.com/libretro/RetroArch.git
+
+      - name: Build fceumm core
+        run: |
+          git clone --depth=1 https://github.com/libretro/libretro-fceumm.git
+          cd libretro-fceumm
+          emmake make -f Makefile platform=emscripten -j$(nproc) 2>&1 | tail -10
+          cp fceumm_libretro_emscripten.bc ../RetroArch/libretro_emscripten.bc
+
+      - name: Build RetroArch (vanilla, no patches)
+        run: |
+          cd RetroArch
+          # 和 buildbot 一样的编译参数
+          emmake make -f Makefile.emscripten \
+            LIBRETRO=fceumm \
+            HAVE_OPENGLES3=1 \
+            HAVE_NETWORKING=1 \
+            -j$(nproc) 2>&1 | tail -20
+
+      - name: Check output
+        run: |
+          cd RetroArch
+          if [ -f "fceumm_libretro.js" ] && [ -f "fceumm_libretro.wasm" ]; then
+            echo "✅ Build succeeded"
+            ls -lh fceumm_libretro.js fceumm_libretro.wasm
+            echo "JS size: $(wc -c < fceumm_libretro.js)"
+            echo "WASM size: $(wc -c < fceumm_libretro.wasm)"
+            echo "Buildbot WASM size: 3066949"
+          else
+            echo "❌ Build failed"
+          fi
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: vanilla-fceumm
+          path: RetroArch/fceumm_libretro.*
