@@ -84,14 +84,16 @@ jobs:
               continue
             fi
 
-            # MD/SFC 核心需要 HAVE_CHEEVOS=1 激活内存同步到 work_ram
-            EXTRA_FLAGS=""
-            if [ "$CORE" = "genesis_plus_gx" ] || [ "$CORE" = "snes9x" ]; then
-              echo "🚀 16位核心，强注 HAVE_CHEEVOS=1"
-              EXTRA_FLAGS="HAVE_CHEEVOS=1"
+            # genesis_plus_gx 的 READ_BYTE/WRITE_BYTE 宏做了指针强转，
+            # 在 -O3 下触发严格别名优化导致 work_ram 写入被优化掉。
+            # 用 sed 在 emscripten 的 CFLAGS 行追加 -fno-strict-aliasing。
+            if [ "$CORE" = "genesis_plus_gx" ]; then
+              sed -i '/^ifeq.*platform.*emscripten$/,/^$/{
+                /CFLAGS.*+=.*-O3/s|-O3|-O3 -fno-strict-aliasing|
+              }' "$MAKEFILE"
+              echo "✅ 已添加 -fno-strict-aliasing"
             fi
-
-            emmake make -f "$MAKEFILE" platform=emscripten $EXTRA_FLAGS -j$(nproc) 2>&1 | tail -10
+            emmake make -f "$MAKEFILE" platform=emscripten -j$(nproc) 2>&1 | tail -10
 
             BC_FILE=$(find . -name "*_libretro_emscripten.bc" -o -name "*_libretro_emscripten.a" | head -1)
 
