@@ -70,11 +70,11 @@ jobs:
             echo "🔨 编译 core: $CORE"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
-            cd "core_${CORE}"
-
             # 保存 repo 根目录（cd 后需要找回 RetroArch 路径）
             REPO_DIR="$PWD"
+
+            git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
+            cd "core_${CORE}"
 
             # 不同 core 的 Makefile 路径不同
             if [ -f "Makefile" ]; then
