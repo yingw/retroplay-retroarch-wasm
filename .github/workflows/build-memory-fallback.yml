@@ -73,11 +73,13 @@ jobs:
             git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
             cd "core_${CORE}"
 
-            # 不同 core 的 Makefile 名字不同
+            # 不同 core 的 Makefile 路径不同
             if [ -f "Makefile" ]; then
               MAKEFILE="Makefile"
             elif [ -f "Makefile.libretro" ]; then
               MAKEFILE="Makefile.libretro"
+            elif [ -f "libretro/Makefile" ]; then
+              MAKEFILE="libretro/Makefile"
             else
               echo "❌ 找不到 Makefile"
               cd ..
