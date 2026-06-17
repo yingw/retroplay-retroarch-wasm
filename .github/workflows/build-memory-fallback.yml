@@ -84,15 +84,13 @@ jobs:
               continue
             fi
 
-            # genesis_plus_gx 的 READ_BYTE/WRITE_BYTE 宏做了指针强转，
-            # 在 -O3 下触发严格别名优化导致 work_ram 写入被优化掉。
-            # 用 sed 在 emscripten 的 CFLAGS 行追加 -fno-strict-aliasing。
-            if [ "$CORE" = "genesis_plus_gx" ]; then
-              sed -i '/^ifeq.*platform.*emscripten$/,/^$/{
-                /CFLAGS.*+=.*-O3/s|-O3|-O3 -fno-strict-aliasing|
-              }' "$MAKEFILE"
-              echo "✅ 已添加 -fno-strict-aliasing"
-            fi
+            # 老 C 模拟器的 READ_BYTE/WRITE_BYTE 宏普遍做了指针强转（uint8* → uint16*），
+            # 在 -O3 下触发严格别名优化导致内存写入被编译器优化掉。
+            # 所有核心统一加 -fno-strict-aliasing。
+            # 方法：在 Makefile 末尾追加 CFLAGS/CXXFLAGS 覆盖（+= 会追加到已有值后面）
+            echo 'CFLAGS += -fno-strict-aliasing' >> "$MAKEFILE"
+            echo 'CXXFLAGS += -fno-strict-aliasing' >> "$MAKEFILE"
+            echo "✅ 已添加 -fno-strict-aliasing"
             emmake make -f "$MAKEFILE" platform=emscripten -j$(nproc) 2>&1 | tail -10
 
             BC_FILE=$(find . -name "*_libretro_emscripten.bc" -o -name "*_libretro_emscripten.a" | head -1)
