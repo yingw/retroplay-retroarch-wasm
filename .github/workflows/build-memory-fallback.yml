@@ -73,7 +73,6 @@ jobs:
             git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
             cd "core_${CORE}"
 
-            # core 编译（使用默认 -O3，和 frontend 一致）
             # 不同 core 的 Makefile 名字不同
             if [ -f "Makefile" ]; then
               MAKEFILE="Makefile"
@@ -84,7 +83,15 @@ jobs:
               cd ..
               continue
             fi
-            emmake make -f "$MAKEFILE" platform=emscripten -j$(nproc) 2>&1 | tail -10
+
+            # MD/SFC 核心需要 HAVE_CHEEVOS=1 激活内存同步到 work_ram
+            EXTRA_FLAGS=""
+            if [ "$CORE" = "genesis_plus_gx" ] || [ "$CORE" = "snes9x" ]; then
+              echo "🚀 16位核心，强注 HAVE_CHEEVOS=1"
+              EXTRA_FLAGS="HAVE_CHEEVOS=1"
+            fi
+
+            emmake make -f "$MAKEFILE" platform=emscripten $EXTRA_FLAGS -j$(nproc) 2>&1 | tail -10
 
             BC_FILE=$(find . -name "*_libretro_emscripten.bc" -o -name "*_libretro_emscripten.a" | head -1)
 
