@@ -118,7 +118,9 @@ jobs:
             # 添加 EMULATE_FUNCTION_POINTER_CASTS=1 到 LDFLAGS
             # 这个参数让 Emscripten 自动处理隐式函数指针类型转换
             # 是防止 call_indirect 崩溃的关键
+            # 同时导出 retro_get_memory_data/size 供 JS 直接读取模拟器 RAM
             echo 'LDFLAGS += -s EMULATE_FUNCTION_POINTER_CASTS=1' >> Makefile.emscripten
+            echo 'LDFLAGS += -s EXPORTED_FUNCTIONS+=_retro_get_memory_data,_retro_get_memory_size' >> Makefile.emscripten
 
             # 关键编译参数：
             # - HAVE_NETWORKING=1: 命令接口（READ_CORE_MEMORY）依赖 networking 编译
