@@ -20,11 +20,13 @@ jobs:
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
         with:
-          version: 3.1.48
+          version: 3.1.51
 
       - name: Clone RetroArch
         run: |
           git clone --depth=1 --branch v1.22.2 https://github.com/libretro/RetroArch.git
+          # Fix: emscripten_GetProcAddress removed in Emscripten 3.1.51+
+          sed -i 's/return emscripten_GetProcAddress(symbol);/return (void*)0;/' RetroArch/gfx/drivers_context/emscriptenwebgl_ctx.c
 
       - name: Build fceumm core
         run: |
