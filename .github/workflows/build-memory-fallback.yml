@@ -79,7 +79,9 @@ jobs:
             elif [ -f "Makefile.libretro" ]; then
               MAKEFILE="Makefile.libretro"
             elif [ -f "libretro/Makefile" ]; then
-              MAKEFILE="libretro/Makefile"
+              # snes9x: Makefile 在 libretro/ 子目录，需要 cd 进去
+              MAKEFILE="Makefile"
+              cd libretro
             else
               echo "❌ 找不到 Makefile"
               cd ..
