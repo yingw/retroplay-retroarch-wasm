@@ -78,10 +78,6 @@ jobs:
           CORE_REPOS["genesis_plus_gx"]="libretro/Genesis-Plus-GX"
           CORE_REPOS["gambatte"]="libretro/gambatte-libretro"
 
-          # CMake 构建的核心
-          declare -A CORE_USE_CMAKE
-          CORE_USE_CMAKE["mgba"]="1"
-
           CORES="${{ github.event.inputs.cores }}"
           mkdir -p dist
 
@@ -103,49 +99,13 @@ jobs:
             git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
             cd "core_${CORE}"
 
-            # ── 核心编译 ──
-            if [ "${CORE_USE_CMAKE[$CORE]}" = "1" ]; then
-              echo "📦 CMake 构建"
-              mkdir -p build-emscripten && cd build-emscripten
-              emcmake cmake .. \
-                -DBUILD_LIBRETRO=ON \
-                -DBUILD_STATIC=OFF \
-                -DBUILD_SHARED=ON \
-                -DBUILD_GL=OFF \
-                -DBUILD_GLES2=OFF \
-                -DBUILD_GLES3=OFF \
-                -DBUILD_QT=OFF \
-                -DBUILD_SDL=OFF \
-                -DBUILD_PERF=OFF \
-                -DBUILD_TEST=OFF \
-                -DBUILD_SUITE=OFF \
-                -DBUILD_DOCGEN=OFF \
-                -DUSE_FFMPEG=OFF \
-                -DUSE_SQLITE3=OFF \
-                -DUSE_ELF=OFF \
-                -DUSE_LIBZIP=OFF \
-                -DUSE_PNG=OFF \
-                -DUSE_EPOXY=OFF \
-                -DENABLE_DEBUGGERS=OFF \
-                -DCMAKE_C_FLAGS="-D_GNU_SOURCE" \
-                -G "Unix Makefiles" 2>&1 | tail -10
-              emmake make -j$(nproc) 2>&1 | tail -20
-              cd ..
-            else
-              echo "📦 Makefile 构建"
-              emmake make -f Makefile platform=emscripten -j$(nproc) 2>&1 | tail -30
-            fi
+            # ── 核心编译（统一用 Makefile + platform=emscripten）──
+            # mgba 的 Makefile = include Makefile.libretro，和其他核心一样
+            echo "📦 Makefile 构建 (platform=emscripten)"
+            emmake make -f Makefile platform=emscripten -j$(nproc) 2>&1 | tail -30
 
             # ── 查找产物 ──
-            if [ "${CORE_USE_CMAKE[$CORE]}" = "1" ]; then
-              # CMake 产物：找 libretro 相关的 .so 或 .a
-              BC_FILE=$(find build-emscripten -name "*libretro*.so" -o -name "*libretro*.a" | head -1)
-              if [ -z "$BC_FILE" ]; then
-                BC_FILE=$(find build-emscripten -name "*.a" ! -name "libmgba.a" | head -1)
-              fi
-            else
-              BC_FILE=$(find . -name "*_libretro_emscripten.bc" -o -name "*_libretro_emscripten.a" | head -1)
-            fi
+            BC_FILE=$(find . -name "*_libretro_emscripten.bc" -o -name "*_libretro_emscripten.a" | head -1)
 
             if [ -z "$BC_FILE" ]; then
               echo "❌ 编译失败，未找到产物: $CORE"
