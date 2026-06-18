@@ -101,31 +101,10 @@ jobs:
 
             # ── mgba 专用 patch：导出 EWRAM/IWRAM 指针 ──
             # retro_get_memory_data(2) 在 mgba 中返回 IWRAM（32KB），不是 EWRAM（256KB）
-            # RA 用 RETRO_ENVIRONMENT_GET_MEMORY_MAPS 读 EWRAM，我们直接导出指针更高效
+            # 用 base64 编码避免 YAML 解析器把 C 的 # 当成注释
             if [ "$CORE" = "mgba" ]; then
-              echo "🔧 Patch mgba: 导出 EWRAM/IWRAM 指针"
-              cat >> src/platform/libretro/libretro.c << 'MPATCH'
-
-/* RetroPlay: 直接导出 EWRAM/IWRAM 指针，绕开 retro_get_memory_data 限制 */
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#include <mgba/gba/interface.h>
-#include <mgba/internal/gba/gba.h>
-#include <mgba/internal/gba/memory.h>
-
-EMSCRIPTEN_KEEPALIVE void* retroplay_get_ewram(void) {
-    if (!context || !context->gba) return NULL;
-    struct GBA* gba = (struct GBA*) context->gba->board;
-    return gba->memory.wram;
-}
-
-EMSCRIPTEN_KEEPALIVE void* retroplay_get_iwram(void) {
-    if (!context || !context->gba) return NULL;
-    struct GBA* gba = (struct GBA*) context->gba->board;
-    return gba->memory.iwram;
-}
-#endif
-MPATCH
+              echo "Patch mgba: export EWRAM/IWRAM pointers"
+              echo "Ci8qIFJldHJvUGxheTogZGlyZWN0bHkgZXhwb3J0IEVXUkFNL0lXUkFNIHBvaW50ZXJzICovCiNpZmRlZiBfX0VNU0NSSVBURU5fXwojaW5jbHVkZSA8ZW1zY3JpcHRlbi5oPgojaW5jbHVkZSA8bWdiYS9nYmEvaW50ZXJmYWNlLmg+CiNpbmNsdWRlIDxtZ2JhL2ludGVybmFsL2diYS9nYmEuaD4KI2luY2x1ZGUgPG1nYmEvaW50ZXJuYWwvZ2JhL21lbW9yeS5oPgoKRU1TQ1JJUFRFTl9LRUVQQUxJVkUgdm9pZCogcmV0cm9wbGF5X2dldF9ld3JhbSh2b2lkKSB7CiAgICBpZiAoIWNvbnRleHQgfHwgIWNvbnRleHQtPmdiYSkgcmV0dXJuIE5VTEw7CiAgICBzdHJ1Y3QgR0JBKiBnYmEgPSAoc3RydWN0IEdCQSopIGNvbnRleHQtPmdiYS0+Ym9hcmQ7CiAgICByZXR1cm4gZ2JhLT5tZW1vcnkud3JhbTsKfQoKRU1TQ1JJUFRFTl9LRUVQQUxJVkUgdm9pZCogcmV0cm9wbGF5X2dldF9pd3JhbSh2b2lkKSB7CiAgICBpZiAoIWNvbnRleHQgfHwgIWNvbnRleHQtPmdiYSkgcmV0dXJuIE5VTEw7CiAgICBzdHJ1Y3QgR0JBKiBnYmEgPSAoc3RydWN0IEdCQSopIGNvbnRleHQtPmdiYS0+Ym9hcmQ7CiAgICByZXR1cm4gZ2JhLT5tZW1vcnkuaXdyYW07Cn0KI2VuZGlmCg==" | base64 -d >> src/platform/libretro/libretro.c
             fi
 
             # ── 核心编译（统一用 Makefile + platform=emscripten）──
