@@ -61,10 +61,9 @@ jobs:
         run: |
           cd RetroArch
 
-          # 在 EXPORTED_FUNCTIONS 末尾追加内存导出函数
-          # 原始列表以 EmscriptenReceiveCommandReply 结尾
-          # 这些函数在核心的 .a 中定义，EXPORTED_FUNCTIONS 让 emscripten 从链接后的二进制导出
-          sed -i 's/EmscriptenReceiveCommandReply/EmscriptenReceiveCommandReply","_retro_get_memory_data","_retro_get_memory_size","_retroplay_get_ewram","_retroplay_get_iwram/' Makefile.emscripten
+          # 在 EXPORTED_FUNCTIONS 末尾追加通用内存导出函数
+          # retroplay_get_ewram/iwram 只在 mgba 中定义，按需追加
+          sed -i 's/EmscriptenReceiveCommandReply/EmscriptenReceiveCommandReply","_retro_get_memory_data","_retro_get_memory_size/' Makefile.emscripten
 
           echo "=== 验证 EXPORTED_FUNCTIONS ==="
           grep "EXPORTED_FUNCTIONS" Makefile.emscripten | head -2
@@ -136,11 +135,21 @@ jobs:
             echo "🔗 链接 RetroArch 前端..."
             cd RetroArch
 
+            # mgba 需要额外导出 retroplay_get_ewram/iwram
+            if [ "$CORE" = "mgba" ]; then
+              sed -i 's/_retro_get_memory_size"/_retro_get_memory_size","_retroplay_get_ewram","_retroplay_get_iwram"/' Makefile.emscripten
+            fi
+
             emmake make -f Makefile.emscripten \
               LIBRETRO="${CORE}" \
               HAVE_NETWORKING=1 \
               HAVE_OPENGLES3=1 \
               -j$(nproc) 2>&1 | tail -30
+
+            # 还原 Makefile.emscripten（去掉 mgba 特有函数，避免影响下一个核心）
+            if [ "$CORE" = "mgba" ]; then
+              sed -i 's/","_retroplay_get_ewram","_retroplay_get_iwram"/' Makefile.emscripten
+            fi
 
             if [ -f "${CORE}_libretro.js" ] && [ -f "${CORE}_libretro.wasm" ]; then
               mkdir -p "../dist"
