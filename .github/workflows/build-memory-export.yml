@@ -109,8 +109,8 @@ jobs:
               mkdir -p build-emscripten && cd build-emscripten
               emcmake cmake .. \
                 -DBUILD_LIBRETRO=ON \
-                -DBUILD_STATIC=ON \
-                -DBUILD_SHARED=OFF \
+                -DBUILD_STATIC=OFF \
+                -DBUILD_SHARED=ON \
                 -DBUILD_GL=OFF \
                 -DBUILD_GLES2=OFF \
                 -DBUILD_GLES3=OFF \
@@ -138,10 +138,10 @@ jobs:
 
             # ── 查找产物 ──
             if [ "${CORE_USE_CMAKE[$CORE]}" = "1" ]; then
-              # CMake 产物：优先找 libretro 相关的 .a，排除核心库 libmgba.a
-              BC_FILE=$(find build-emscripten -name "*.a" ! -name "libmgba.a" | head -1)
+              # CMake 产物：找 libretro 相关的 .so 或 .a
+              BC_FILE=$(find build-emscripten -name "*libretro*.so" -o -name "*libretro*.a" | head -1)
               if [ -z "$BC_FILE" ]; then
-                BC_FILE=$(find build-emscripten -name "*.a" | head -1)
+                BC_FILE=$(find build-emscripten -name "*.a" ! -name "libmgba.a" | head -1)
               fi
             else
               BC_FILE=$(find . -name "*_libretro_emscripten.bc" -o -name "*_libretro_emscripten.a" | head -1)
