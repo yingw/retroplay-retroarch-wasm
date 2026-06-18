@@ -243,5 +243,3 @@ MPATCH
             output/manifest.json
           draft: false
           prerelease: false
-# trigger fix
-# retry
