@@ -128,8 +128,8 @@ jobs:
                 -DUSE_EPOXY=OFF \
                 -DENABLE_DEBUGGERS=OFF \
                 -DCMAKE_C_FLAGS="-D_GNU_SOURCE" \
-                -G Ninja 2>&1 | tail -10
-              emmake ninja -j$(nproc) 2>&1 | tail -20
+                -G "Unix Makefiles" 2>&1 | tail -10
+              emmake make -j$(nproc) 2>&1 | tail -20
               cd ..
             else
               echo "📦 Makefile 构建"
