@@ -64,7 +64,7 @@ jobs:
           # 在 EXPORTED_FUNCTIONS 末尾追加内存导出函数
           # 原始列表以 EmscriptenReceiveCommandReply 结尾
           # 这些函数在核心的 .a 中定义，EXPORTED_FUNCTIONS 让 emscripten 从链接后的二进制导出
-          sed -i 's/EmscriptenReceiveCommandReply/EmscriptenReceiveCommandReply","_retro_get_memory_data","_retro_get_memory_size/' Makefile.emscripten
+          sed -i 's/EmscriptenReceiveCommandReply/EmscriptenReceiveCommandReply","_retro_get_memory_data","_retro_get_memory_size","_retroplay_get_ewram","_retroplay_get_iwram/' Makefile.emscripten
 
           echo "=== 验证 EXPORTED_FUNCTIONS ==="
           grep "EXPORTED_FUNCTIONS" Makefile.emscripten | head -2
@@ -98,6 +98,35 @@ jobs:
 
             git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
             cd "core_${CORE}"
+
+            # ── mgba 专用 patch：导出 EWRAM/IWRAM 指针 ──
+            # retro_get_memory_data(2) 在 mgba 中返回 IWRAM（32KB），不是 EWRAM（256KB）
+            # RA 用 RETRO_ENVIRONMENT_GET_MEMORY_MAPS 读 EWRAM，我们直接导出指针更高效
+            if [ "$CORE" = "mgba" ]; then
+              echo "🔧 Patch mgba: 导出 EWRAM/IWRAM 指针"
+              cat >> src/platform/libretro/libretro.c << 'MPATCH'
+
+/* RetroPlay: 直接导出 EWRAM/IWRAM 指针，绕开 retro_get_memory_data 限制 */
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <mgba/gba/interface.h>
+#include <mgba/internal/gba/gba.h>
+#include <mgba/internal/gba/memory.h>
+
+EMSCRIPTEN_KEEPALIVE void* retroplay_get_ewram(void) {
+    if (!context || !context->gba) return NULL;
+    struct GBA* gba = (struct GBA*) context->gba->board;
+    return gba->memory.wram;
+}
+
+EMSCRIPTEN_KEEPALIVE void* retroplay_get_iwram(void) {
+    if (!context || !context->gba) return NULL;
+    struct GBA* gba = (struct GBA*) context->gba->board;
+    return gba->memory.iwram;
+}
+#endif
+MPATCH
+            fi
 
             # ── 核心编译（统一用 Makefile + platform=emscripten）──
             # mgba 的 Makefile = include Makefile.libretro，和其他核心一样
