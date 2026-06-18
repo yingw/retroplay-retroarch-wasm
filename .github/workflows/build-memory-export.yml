@@ -107,10 +107,17 @@ jobs:
               echo "Ci8qIFJldHJvUGxheTogZXhwb3J0IEVXUkFNL0lXUkFNIHBvaW50ZXJzIGZvciBKUyBtZW1vcnkgcmVhZGluZyAqLwojaWZkZWYgX19FTVNDUklQVEVOX18KI2luY2x1ZGUgPGVtc2NyaXB0ZW4uaD4KI2luY2x1ZGUgPG1nYmEvaW50ZXJuYWwvZ2JhL2diYS5oPgojaW5jbHVkZSA8bWdiYS9pbnRlcm5hbC9nYmEvbWVtb3J5Lmg+CgpleHRlcm4gc3RydWN0IG1Db3JlKiBjb3JlOwoKRU1TQ1JJUFRFTl9LRUVQQUxJVkUgdm9pZCogcmV0cm9wbGF5X2dldF9ld3JhbSh2b2lkKSB7CiAgICBpZiAoIWNvcmUgfHwgIWNvcmUtPmJvYXJkKSByZXR1cm4gTlVMTDsKICAgIHN0cnVjdCBHQkEqIGdiYSA9IGNvcmUtPmJvYXJkOwogICAgcmV0dXJuIGdiYS0+bWVtb3J5LndyYW07Cn0KCkVNU0NSSVBURU5fS0VFUEFMSVZFIHZvaWQqIHJldHJvcGxheV9nZXRfaXdyYW0odm9pZCkgewogICAgaWYgKCFjb3JlIHx8ICFjb3JlLT5ib2FyZCkgcmV0dXJuIE5VTEw7CiAgICBzdHJ1Y3QgR0JBKiBnYmEgPSBjb3JlLT5ib2FyZDsKICAgIHJldHVybiBnYmEtPm1lbW9yeS5pd3JhbTsKfQojZW5kaWYK" | base64 -d >> src/platform/libretro/libretro.c
             fi
 
-            # ── 核心编译（统一用 Makefile + platform=emscripten）──
-            # mgba 的 Makefile = include Makefile.libretro，和其他核心一样
-            echo "📦 Makefile 构建 (platform=emscripten)"
-            emmake make -f Makefile platform=emscripten -j$(nproc) 2>&1 | tail -30
+            # ── 核心编译 ──
+            # snes9x 的 Makefile 在 libretro/ 子目录
+            if [ "$CORE" = "snes9x" ]; then
+              echo "📦 Makefile 构建 (libretro/ 子目录)"
+              cd libretro
+              emmake make -f Makefile platform=emscripten -j$(nproc) 2>&1 | tail -30
+              cd ..
+            else
+              echo "📦 Makefile 构建 (platform=emscripten)"
+              emmake make -f Makefile platform=emscripten -j$(nproc) 2>&1 | tail -30
+            fi
 
             # ── 查找产物 ──
             BC_FILE=$(find . -name "*_libretro_emscripten.bc" -o -name "*_libretro_emscripten.a" | head -1)
@@ -123,7 +130,7 @@ jobs:
 
             echo "✅ 核心编译成功: $BC_FILE"
             cp "$BC_FILE" ../RetroArch/libretro_emscripten.bc
-            cd ..
+            cd ..  # 回到仓库根目录
 
             # ── 链接 RetroArch 前端 ──
             echo "🔗 链接 RetroArch 前端..."
