@@ -16,8 +16,11 @@
 extern void *retro_get_memory_data(unsigned id);
 extern unsigned retro_get_memory_size(unsigned id);
 
-// RETRO_MEMORY_SYSTEM_RAM = 0
-#define RETRO_MEMORY_SYSTEM_RAM 0
+// libretro API 内存类型常量
+#define RETRO_MEMORY_SAVE_RAM 0
+#define RETRO_MEMORY_RTC 1
+#define RETRO_MEMORY_SYSTEM_RAM 2
+#define RETRO_MEMORY_VIDEO_RAM 3
 
 /// 获取模拟器系统 RAM 在 WASM 线性内存中的起始偏移
 EMSCRIPTEN_KEEPALIVE

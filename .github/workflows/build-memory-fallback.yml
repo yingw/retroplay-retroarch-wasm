@@ -73,7 +73,12 @@ jobs:
             # 保存 repo 根目录（cd 后需要找回 RetroArch 路径）
             REPO_DIR="$PWD"
 
-            git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
+            # gambatte 使用修改后的源码（导出 RAM 指针）
+            if [ "$CORE" = "gambatte" ] && [ -d "gambatte-libretro" ]; then
+              cp -r gambatte-libretro "core_${CORE}"
+            else
+              git clone --depth=1 "https://github.com/${REPO}.git" "core_${CORE}"
+            fi
             cd "core_${CORE}"
 
             # 不同 core 的 Makefile 路径不同
@@ -120,10 +125,9 @@ jobs:
             # 是防止 call_indirect 崩溃的关键
             echo 'LDFLAGS += -s EMULATE_FUNCTION_POINTER_CASTS=1' >> Makefile.emscripten
 
-            # 导出 retro_get_memory_data/size 和 gambatte RAM 指针
-            # retro_get_memory_data 返回的是静态指针，不随游戏更新
-            # 需要直接访问 gambatte 的 rambank 指针
-            sed -i 's/_cmd_cheat_apply_cheats/_cmd_cheat_apply_cheats,_retro_get_memory_data,_retro_get_memory_size/' Makefile.emscripten
+            # 导出 retro_get_memory_data/size 和 RetroPlay RAM 指针函数
+            # retroplay_get_* 返回活的 RAM 指针（每帧更新）
+            sed -i 's/_cmd_cheat_apply_cheats/_cmd_cheat_apply_cheats,_retro_get_memory_data,_retro_get_memory_size,_retroplay_get_wram0_ptr,_retroplay_get_wram1_ptr,_retroplay_get_hram_ptr,_retroplay_get_vram_ptr,_retroplay_get_oam_ptr,_retroplay_get_rom0_ptr,_retroplay_get_rom1_ptr,_retroplay_get_wram_size/' Makefile.emscripten
 
             # 关键编译参数：
             # - HAVE_NETWORKING=1: 命令接口（READ_CORE_MEMORY）依赖 networking 编译
