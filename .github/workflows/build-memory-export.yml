@@ -63,14 +63,8 @@ jobs:
 
           # 在 EXPORTED_FUNCTIONS 末尾追加内存导出函数
           # 原始列表以 EmscriptenReceiveCommandReply 结尾
+          # 这些函数在核心的 .a 中定义，EXPORTED_FUNCTIONS 让 emscripten 从链接后的二进制导出
           sed -i 's/EmscriptenReceiveCommandReply/EmscriptenReceiveCommandReply","_retro_get_memory_data","_retro_get_memory_size/' Makefile.emscripten
-
-          # 复制 ra_memory_export.c 到 RetroArch 源码目录
-          cp ../ra_memory_export.c .
-
-          # 在 emscripten/library_rwebcam.js 引用后追加 ra_memory_export.c 到 OBJ
-          # 方法：在 Makefile.emscripten 的 OBJ 列表末尾追加
-          sed -i 's|library_rwebcam.js|library_rwebcam.js ra_memory_export.c|' Makefile.emscripten
 
           echo "=== 验证 EXPORTED_FUNCTIONS ==="
           grep "EXPORTED_FUNCTIONS" Makefile.emscripten | head -2
